@@ -1,0 +1,100 @@
+{
+  "_comment": "Fenghua 配置样例。坐标均为横屏逻辑坐标(原点左上, 宽=长边)。keyCode 是 Windows 虚拟键码: 1=鼠标左键, 2=鼠标右键, 4=中键, 0x57=W, 0x41=A, 0x53=S, 0x44=D, 0x20=空格。",
+
+  "keys": [
+    {
+      "name": "开火",
+      "keyCode": 1,
+      "x1": 2210,
+      "y1": 900,
+      "radius": 55,
+      "x2": 0,
+      "y2": 0,
+      "isRange": false,
+      "eyeMode": false
+    },
+    {
+      "name": "开镜",
+      "keyCode": 2,
+      "x1": 2050,
+      "y1": 640,
+      "radius": 45,
+      "x2": 0,
+      "y2": 0,
+      "isRange": false,
+      "eyeMode": false
+    },
+    {
+      "name": "跳跃",
+      "keyCode": 32,
+      "x1": 2450,
+      "y1": 700,
+      "radius": 45,
+      "x2": 0,
+      "y2": 0,
+      "isRange": false,
+      "eyeMode": false
+    },
+    {
+      "name": "小眼睛",
+      "keyCode": 86,
+      "x1": 2050,
+      "y1": 700,
+      "radius": 40,
+      "x2": 0,
+      "y2": 0,
+      "isRange": false,
+      "eyeMode": true
+    }
+  ],
+
+  "joysticks": [
+    {
+      "name": "摇杆1",
+      "cx": 581,
+      "cy": 1523,
+      "innerRadius": 92,
+      "middleRadius": 229,
+      "rectHeight": 386,
+      "speed": 2597.0,
+      "rangeScale": 1.0,
+      "diagDrift": 20.0,
+      "spawnRadius": 30,
+      "keyUp": 87,
+      "keyDown": 83,
+      "keyLeft": 65,
+      "keyRight": 68,
+      "sprintKey": 160,
+      "sprintHold": true,
+      "sneakKey": 0,
+      "sneakHold": true
+    }
+  ],
+
+  "mouse": {
+    "enabled": true,
+    "sensitivity": 2.0,
+    "constrainedSensitivity": 2.0,
+    "gyroSensitivity": 2.0,
+    "pointerSlot": 9,
+    "constrainedMode": false,
+    "gyroMode": false,
+    "gyroShake": false,
+    "gyroFlipX": false,
+    "gyroFlipY": false,
+    "flipX": false,
+    "flipY": false,
+    "constrainX1": 600,
+    "constrainY1": 200,
+    "constrainX2": 1800,
+    "constrainY2": 880,
+    "modeSwitchKey": 46,
+    "gyroSwitchKey": 0,
+    "sideBtn1": 0,
+    "sideBtn2": 0
+  },
+
+  "keyRadius": 55.0,
+  "mouseX": 1200,
+  "mouseY": 540
+}

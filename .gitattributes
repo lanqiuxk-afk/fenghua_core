@@ -1,0 +1,21 @@
+# 换行统一: 仓库内一律 LF, 检出时不自动转换 (避免 Windows 上把源码改成 CRLF)
+* text=auto eol=lf
+
+# Windows 批处理必须 CRLF, 否则 cmd.exe 解析可能出错
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制: 不做任何换行处理
+*.dll binary
+*.a   binary
+*.so  binary
+*.png binary
+*.jpg binary
+*.ico binary
+
+# 让 GitHub 正确识别语言统计
+*.h        linguist-language=C++
+*.hpp      linguist-language=C++
+*.cpp      linguist-language=C++
+json.hpp   linguist-vendored
