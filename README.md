@@ -210,6 +210,10 @@ gyro_update / hide_process / read / write` 的完整映射。启用条件：
 | 约束 | `modeSwitchKey`（默认 Del） | 光标被限制在 `constrainX1..X2 / Y1..Y2` 框内滑动，撞边回中，适合需要持续摇视角的游戏 |
 | 陀螺仪 | `gyroSwitchKey` | PC 鼠标位移折算成陀螺仪角速度（需驱动支持 GyroUpdate）；UDP 线程只累加，120Hz 线程按固定频率输出，采样率无关 |
 
+## 维护说明
+
+如需长期维护，请 fork 本仓库后在自己的分支上继续。
+
 ## License
 
 MIT，见 `LICENSE`。
