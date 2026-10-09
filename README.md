@@ -21,6 +21,7 @@
 - 多指槽位管理（5..15 池，按键 / 指针 / 点击互不冲突）
 - 配置 JSON 读写；本机 USB 键鼠直连（可选）
 - 内核注入通过 `src/driver/driver.h` 的接口接入
+- 投屏采集：内嵌 scrcpy-server.jar，经 TCP 56790 把 H.264 推给 PC
 
 ## 目录结构
 
@@ -38,6 +39,11 @@ fenghua_core/
 │   │   ├── driver.h             IDriver 接口 (接缝都在这)
 │   │   ├── stub_driver.cpp      空实现 + 驱动注册表 (也是写新驱动的模板)
 │   │   └── paradise_driver.cpp  Paradise 参考实现 (未提供驱动库时自动退化)
+│   ├── capture/                 投屏 (把屏幕推给 PC)
+│   │   ├── scrcpy_run.{h,cpp}   写 jar -> app_process 拉起 -> 收流
+│   │   ├── screen_stream.{h,cpp} TCP 56790 转发 (FHSC 流头)
+│   │   ├── screen_record.*       另一条采集路径 (系统 screenrecord, root)
+│   │   └── screen_cap_loader.*   SurfaceControl 直采 (可选, 见下文)
 │   ├── io/
 │   │   ├── injector.{h,cpp}     注入入口: 逻辑坐标 -> 驱动坐标 + 翻转
 │   │   ├── udp_server.{h,cpp}   UDP 收包 + ping/pong
@@ -48,6 +54,10 @@ fenghua_core/
 │   └── util/
 │       ├── keys.{h,cpp}         键码名 / 本机 IP / 时钟
 │       └── json.hpp             nlohmann/json (单头)
+├── libs/arm64-v8a/
+│   └── libselinux.so            预编译, 采集时 setcon 切 shell 域要用
+├── tools/
+│   └── embed_binary.py          把二进制转成 C 头文件 (重新生成内嵌 jar 用)
 └── configs/
     └── mappings.example.json    配置样例 (带注释说明)
 ```
@@ -105,9 +115,58 @@ adb shell su -c "/data/local/tmp/fenghua_core --driver stub --config /data/adb/f
 | `--screen <WxH>` | 逻辑分辨率（横屏给出），默认读 `wm size` |
 | `--config <path>` | 配置 json 路径 |
 | `--logdir <path>` | 日志目录，默认 `/data/adb/fenghua` |
+| `--stream` | 开启投屏: 采集屏幕并推送到 TCP 56790 给 PC |
+| `--crop <WxH>` | 投屏只推中心区域（默认全屏） |
 | `--quiet` | 关闭日志 |
 
 PC 侧：`fenghua_sender.exe <设备IP>`，按 **F12** 开始/停止捕获。
+
+## 投屏
+
+设备端把屏幕编码成 H.264 推给 PC（PC 端用配套的 `fenghua_sender --stream` 接收）。
+
+```bash
+# 全屏投屏
+adb shell su -c "/data/local/tmp/fenghua_core --stream"
+
+# 只推中心 1280x720
+adb shell su -c "/data/local/tmp/fenghua_core --stream --crop 1280x720"
+```
+
+### 采集是怎么工作的
+
+仓库里**内嵌了 scrcpy-server.jar**（`src/capture/scrcpy_server_embedded.h`，
+89 KB，来自 [Genymobile/scrcpy](https://github.com/Genymobile/scrcpy)，Apache-2.0）。运行时：
+
+1. 把 jar 写到 `/data/local/tmp/scrcpy-server.jar`
+2. `fork` 后降权到 `shell` 域，用 `app_process` 拉起 jar
+3. jar 用 MediaProjection 采集 + MediaCodec 编码，经 `localabstract:scrcpy` 回连本进程
+4. `screen_stream` 加 16 字节 FHSC 流头后，按包转发到 TCP 56790
+
+PC 端不需要这个 jar，它只在设备上跑。
+
+### 线上格式
+
+```
+[16B 流头]  "FHSC" + w(u32BE) + h(u32BE) + u32 flags
+之后每个访问单元:  [ptsAndFlags 8B][packetSize u32BE][payload]
+```
+
+PC 端按这个 12 字节头逐包解析。注意 payload 是 MediaCodec 的一帧，
+可能是 Annex-B 也可能是 AVCC（接收端两种都处理）。
+
+### 可选的第三条采集路径
+
+`screen_cap_loader` 走 SurfaceControl 直采，需要一份约 20 MB 的内嵌 `.so`。
+**该二进制不在仓库里**（体积原因）。要用的话：
+
+```bash
+python tools/embed_binary.py your_libscreen_cap.so \
+    src/capture/libscreen_cap_embedded.h kLibScreenCapSo "libscreen_cap.so"
+```
+
+生成后 CMake 会自动定义 `FH_HAVE_SCREEN_CAP_LIB` 并编译这条路；没有它时
+`screen_cap_loader` 退化为返回失败的桩，`--stream` 走 scrcpy 路径不受影响。
 
 ## 通信协议
 
@@ -216,4 +275,7 @@ gyro_update / hide_process / read / write` 的完整映射。启用条件：
 
 ## License
 
-MIT，见 `LICENSE`。
+MIT，见 LICENSE。
+
+仓库内嵌/依赖的第三方组件（scrcpy-server.jar、libselinux.so、nlohmann/json）及其许可证见
+[	hird_party/NOTICE.md](third_party/NOTICE.md)。，见 `LICENSE`。

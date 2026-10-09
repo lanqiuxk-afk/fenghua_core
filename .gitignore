@@ -23,6 +23,9 @@ compile_commands.json
 *.obj
 *.a
 *.so
+# 例外: 采集降权要链接的预编译库, 必须随仓库 (见 third_party/NOTICE.md)
+!libs/**/*.so
+!libs/**/*.a
 *.dylib
 *.exe
 *.pdb

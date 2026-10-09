@@ -11,6 +11,8 @@
 #include "driver/driver.h"
 #include "io/file_logger.h"
 #include "io/injector.h"
+#include "capture/scrcpy_run.h"
+#include "capture/screen_stream.h"
 #include "io/mapping_manager.h"
 #include "util/keys.h"
 
@@ -37,6 +39,8 @@ void PrintUsage(const char* argv0) {
         "  --screen <WxH>   逻辑分辨率, 按横屏给出 (默认读 wm size)\n"
         "  --config <path>  配置 json (默认 /data/adb/fenghua/mappings.json)\n"
         "  --logdir <path>  日志目录 (默认 /data/adb/fenghua)\n"
+        "  --stream         开启投屏: 采集屏幕并推送到 TCP 56790 给 PC\n"
+        "  --crop <WxH>     投屏只推中心区域 (默认全屏)\n"
         "  --quiet          关闭日志\n"
         "  --help\n",
         argv0, fh::ListDrivers().c_str());
@@ -77,7 +81,9 @@ int main(int argc, char** argv) {
     std::string logDir = "/data/adb/fenghua";
     int port = 56789;
     int screenW = 0, screenH = 0;
+    int cropW = 0, cropH = 0;
     bool quiet = false;
+    bool wantStream = false;
 
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
@@ -90,6 +96,16 @@ int main(int argc, char** argv) {
         else if (a == "--config") configPath = nextArg("--config");
         else if (a == "--logdir") logDir = nextArg("--logdir");
         else if (a == "--quiet")  quiet = true;
+        else if (a == "--stream") wantStream = true;
+        else if (a == "--crop") {
+            const char* s = nextArg("--crop");
+            int w = 0, h = 0;
+            if (sscanf(s, "%dx%d", &w, &h) != 2 || w <= 0 || h <= 0) {
+                printf("[!] --crop expects WxH, e.g. 1280x720\n");
+                return 2;
+            }
+            cropW = w; cropH = h;
+        }
         else if (a == "--help" || a == "-h") { PrintUsage(argv[0]); return 0; }
         else if (a == "--screen") {
             const char* s = nextArg("--screen");
@@ -162,6 +178,21 @@ int main(int argc, char** argv) {
     printf("  device ip: %s\n", fh::GetDeviceIP().c_str());
     printf("  put this ip into the PC sender. Ctrl+C to quit.\n\n");
 
+    // ---- 投屏采集 ----
+    if (wantStream) {
+        fh::StartScreenServer();   // 先起 56790 转发器
+        if (fh::ScrcpyStart(cropW, cropH, screenW, screenH)) {
+            printf("  投屏已开启: 采集 %dx%d -> PC 连 %s:56790\n",
+                   cropW > 0 ? cropW : screenW, cropH > 0 ? cropH : screenH,
+                   fh::GetDeviceIP().c_str());
+            FH_LOG("INFO", "Main", "stream on crop=%dx%d disp=%dx%d",
+                 cropW, cropH, screenW, screenH);
+        } else {
+            printf("[!] 投屏启动失败 (scrcpy-server 拉起失败?)\n");
+            FH_LOG("ERROR", "Main", "scrcpy start failed");
+        }
+    }
+
     std::thread joy(JoyLoop);
     joy.detach();
 
@@ -176,6 +207,10 @@ int main(int argc, char** argv) {
     }
 
     printf("\nshutting down...\n");
+    if (wantStream) {
+        fh::ScrcpyStop();
+        fh::StopScreenServer();
+    }
     fh::Engine::Get().Stop();
     fh::Injector::Get().Release();
     driver->Release();
